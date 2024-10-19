@@ -3,130 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Code Scanner & Generator</title>
-    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <title>Escáner NFC</title>
+
     <style>
         body {
             font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            background-color: #f0f0f0;
             margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #1a1a1a;
+            color: #fff;
         }
 
-        h1 {
-            margin-bottom: 20px;
+        .container {
+            text-align: center;
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+            width: 80%;
+            max-width: 400px;
         }
 
         button {
-            margin: 10px;
-            padding: 15px 30px;
-            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px 20px;
+            font-size: 1rem;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-        }
-
-        .generate-btn {
-            background-color: #4CAF50;
-            color: white;
-        }
-
-        .scan-btn {
-            background-color: #2196F3;
-            color: white;
-        }
-
-        .alert {
             margin-top: 10px;
-            padding: 15px;
-            border-radius: 5px;
-            text-align: center;
-            width: 80%;
-            font-weight: bold;
         }
 
-        .alert-success {
-            background-color: #4CAF50;
-            color: white;
+        button:hover {
+            background-color: #45a049;
         }
 
-        .alert-failure {
-            background-color: #f44336;
-            color: white;
-        }
-
-        canvas {
-            margin-top: 10px;
+        #nfc-message {
+            margin-top: 20px;
+            word-break: break-word;
         }
     </style>
 </head>
 <body>
 
-    <h1>QR Code Generator & Validator</h1>
-
-    <button class="generate-btn" onclick="generateNumberAndQRCode()">Generar Número y QR</button>
-    <canvas id="qr-code"></canvas>
-
-    <button class="scan-btn" onclick="startScanning()">Escanear QR</button>
-    <div id="qr-reader" style="width: 300px; margin-top: 10px;"></div>
-
-    <div id="alert" class="alert" style="display: none;"></div>
+    <div class="container">
+        <h2>Escáner NFC</h2>
+        <p>Presiona el botón para empezar a escanear un tag NFC.</p>
+        <button onclick="leerNFC()">Escanear NFC</button>
+        <div id="nfc-message"></div>
+    </div>
 
     <script>
-        let generatedNumbers = [];
+        async function leerNFC() {
+            if ("NDEFReader" in window) {
+                try {
+                    const ndef = new NDEFReader();
+                    await ndef.scan();
+                    document.getElementById('nfc-message').innerText = "Acerque el tag NFC...";
 
-        // Función para generar un número aleatorio y mostrar su código QR.
-        function generateNumberAndQRCode() {
-            const randomNumber = Math.floor(Math.random() * 1000000); // Número aleatorio entre 0 y 999999
-            generatedNumbers.push(randomNumber.toString());
+                    ndef.onreading = (event) => {
+                        const decoder = new TextDecoder();
+                        let message = "Tag NFC escaneado:\n";
+                        
+                        for (const record of event.message.records) {
+                            const recordType = record.recordType;
+                            const data = decoder.decode(record.data);
+                            message += `\nTipo: ${recordType}\nDato: ${data}\n`;
+                        }
 
-            const qr = new QRious({
-                element: document.getElementById('qr-code'),
-                value: randomNumber.toString(), // Generar QR con el número
-                size: 200,
-            });
+                        document.getElementById('nfc-message').innerText = message;
+                    };
 
-            alert(`Número generado: ${randomNumber}`);
-        }
-
-        // Función para iniciar el escaneo del QR.
-        function startScanning() {
-            const html5QrCode = new Html5Qrcode("qr-reader");
-
-            html5QrCode.start(
-                { facingMode: "environment" }, // Usar la cámara trasera
-                {
-                    fps: 10, // Frames por segundo
-                    qrbox: { width: 250, height: 250 } // Tamaño del escáner
-                },
-                (decodedText, decodedResult) => {
-                    validateNumber(decodedText); // Validar el número escaneado
-                    html5QrCode.stop(); // Detener el escaneo tras obtener un resultado
-                },
-                (errorMessage) => {
-                    console.warn(`Error al escanear: ${errorMessage}`);
+                } catch (error) {
+                    document.getElementById('nfc-message').innerText = 
+                        `Error: ${error.message}. Asegúrate de que tu dispositivo soporte NFC y que el navegador lo permita.`;
                 }
-            ).catch((err) => {
-                console.error(`Error al iniciar el escaneo: ${err}`);
-            });
-        }
-
-        // Función para validar si el número escaneado está autorizado.
-        function validateNumber(scannedNumber) {
-            const alertDiv = document.getElementById('alert');
-            if (generatedNumbers.includes(scannedNumber)) {
-                alertDiv.textContent = "Autorizado";
-                alertDiv.className = "alert alert-success";
             } else {
-                alertDiv.textContent = "No autorizado";
-                alertDiv.className = "alert alert-failure";
+                document.getElementById('nfc-message').innerText = 
+                    "Tu navegador no soporta NFC. Intenta usar Chrome en un dispositivo Android.";
             }
-            alertDiv.style.display = "block";
         }
     </script>
 
